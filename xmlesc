@@ -1,0 +1,58 @@
+#!/usr/bin/python3
+
+import xml.etree.ElementTree as ET
+import xmlformatter as xmlf
+import re
+import sys
+import os
+
+ENCODING = 'utf-8'
+
+
+def cdata(xml_DOM):
+    id_pattern = re.compile('.*(Id|Number|EAN|UPC|ISBN)$')
+
+    for element in xml_DOM.iter():
+        if not list(element) and not id_pattern.match(element.tag):
+            element.text = '<![CDATA[{0}]]>'.format(element.text)
+
+
+def save_xml(xml_DOM, output, encoding=ENCODING):
+    cdata(xml_DOM)
+    xml_DOM.write(output, encoding=encoding)
+    formatter = xmlf.Formatter(
+        indent="1", indent_char="\t", encoding_output=encoding)
+    pretty_xml_string = formatter.format_file(
+        output).decode(encoding).replace('&lt;', '<')
+    with open(output, "w", encoding=encoding) as pretty_xml:
+        pretty_xml.write(u"%s" % pretty_xml_string)
+
+
+def escape(path):
+    product_feed = ET.parse(path,
+                            ET.XMLParser(encoding=ENCODING))
+    root = product_feed.getroot()
+    ns = 'http://www.bazaarvoice.com/xs/PRR/ProductFeed/14.7'
+    ET.register_namespace('', ns)
+
+    if '/' in path:
+        filename_extract = re.compile('(.*/)([a-zA-Z0-9_-]+)(\.xml)$')
+        prev = filename_extract.match(path).group(1)
+        name = filename_extract.match(path).group(2)
+        ext = filename_extract.match(path).group(3)
+        output = '{0}{1}_escaped{2}'.format(prev, name, ext)
+    else:
+        filename_extract = re.compile('([a-zA-Z0-9_-]+)(\.xml)$')
+        name = filename_extract.match(path).group(1)
+        ext = filename_extract.match(path).group(2)
+        output = '{0}_escaped{1}'.format(name, ext)
+
+    save_xml(product_feed, output=output)
+
+
+if __name__ == "__main__":
+    xml_pattern = re.compile(r'.*\.xml$')
+    if sys.argv[1:] and xml_pattern.match(sys.argv[1]) and os.path.exists(sys.argv[1]):
+        escape(sys.argv[1])
+    else:
+        print('Couldn\'t parse that file')

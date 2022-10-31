@@ -1,0 +1,22 @@
+#!/usr/bin/python3
+
+import xmlformatter as xmlf
+import sys
+import re
+import os
+
+
+def format_xml(filename, encoding="utf-8"):
+    formatter = xmlf.Formatter(
+        indent="1", indent_char="\t", encoding_output=encoding)
+    pretty_xml_string = formatter.format_file(filename).decode(encoding)
+    with open(filename, "w", encoding=encoding) as pretty_xml:
+        pretty_xml.write(u"%s" % pretty_xml_string)
+
+
+if __name__ == "__main__":
+    xml_pattern = re.compile('.*\.xml$')
+    if sys.argv[1:] and xml_pattern.match(sys.argv[1]) and os.path.exists(sys.argv[1]):
+        format_xml(sys.argv[1])
+    else:
+        print('Couldn\'t parse that file')
