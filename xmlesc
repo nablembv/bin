@@ -1,7 +1,5 @@
 #!/usr/bin/python3
 
-import xml.etree.ElementTree as ET
-import xmlformatter as xmlf
 import re
 import sys
 import os
@@ -9,32 +7,7 @@ import os
 ENCODING = 'utf-8'
 
 
-def cdata(xml_DOM):
-    id_pattern = re.compile('.*(Id|Number|EAN|UPC|ISBN)$')
-
-    for element in xml_DOM.iter():
-        if not list(element) and not id_pattern.match(element.tag):
-            element.text = '<![CDATA[{0}]]>'.format(element.text)
-
-
-def save_xml(xml_DOM, output, encoding=ENCODING):
-    cdata(xml_DOM)
-    xml_DOM.write(output, encoding=encoding)
-    formatter = xmlf.Formatter(
-        indent="1", indent_char="\t", encoding_output=encoding)
-    pretty_xml_string = formatter.format_file(
-        output).decode(encoding).replace('&lt;', '<')
-    with open(output, "w", encoding=encoding) as pretty_xml:
-        pretty_xml.write(u"%s" % pretty_xml_string)
-
-
 def escape(path):
-    product_feed = ET.parse(path,
-                            ET.XMLParser(encoding=ENCODING))
-    root = product_feed.getroot()
-    ns = 'http://www.bazaarvoice.com/xs/PRR/ProductFeed/14.7'
-    ET.register_namespace('', ns)
-
     if '/' in path:
         filename_extract = re.compile('(.*/)([a-zA-Z0-9_-]+)(\.xml)$')
         prev = filename_extract.match(path).group(1)
@@ -47,7 +20,15 @@ def escape(path):
         ext = filename_extract.match(path).group(2)
         output = '{0}_escaped{1}'.format(name, ext)
 
-    save_xml(product_feed, output=output)
+    with open(path, 'r') as xml_file:
+        xml_string = xml_file.read()
+
+    text_pattern = re.compile(
+        r'(<[a-zA-Z0-9="?. _-]+>)(\s*([^<]+)\s*)(</[a-zA-Z0-9="?. _-]+>)')
+
+    with open(output, 'w') as file:
+        file.write(
+            re.sub(text_pattern, '\g<1><![CDATA[\g<2>]]>\g<4>', xml_string))
 
 
 if __name__ == "__main__":

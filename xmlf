@@ -1,20 +1,31 @@
 #!/usr/bin/python3
 
-import xmlformatter as xmlf
+import xml.etree.ElementTree as ET
 import sys
 import re
 import os
+import bs4
 
 
-def format_xml(filename, encoding="utf-8"):
-    formatter = xmlf.Formatter(
-        indent="1", indent_char="\t", encoding_output=encoding)
-    pretty_xml_string = formatter.format_file(filename).decode(encoding)
-    with open(filename, "w", encoding=encoding) as pretty_xml:
-        pretty_xml.write(u"%s" % pretty_xml_string)
+def strip_breaks(data):
+    text_pattern = re.compile(
+        r'(<[a-zA-Z0-9="?. _-]+>)(\s*([^<\r\n]+)\s*)(</[a-zA-Z0-9="?. _-]+>)')
+
+    data = re.sub(text_pattern, '\g<1>\g<3>\g<4>', data)
+
+    return data
 
 
-if __name__ == "__main__":
+def format_xml(xml_file, encoding='utf-8'):
+    bs = bs4.BeautifulSoup(open(xml_file), 'xml')
+    formatter = bs4.formatter.XMLFormatter(indent=4)
+    pretty_xml_string = bs.prettify(formatter=formatter)
+    pretty_xml_string = strip_breaks(pretty_xml_string)
+    with open(xml_file, 'w', encoding=encoding) as pretty_xml:
+        pretty_xml.write(u'%s' % pretty_xml_string)
+
+
+if __name__ == '__main__':
     xml_pattern = re.compile('.*\.xml$')
     if sys.argv[1:] and xml_pattern.match(sys.argv[1]) and os.path.exists(sys.argv[1]):
         format_xml(sys.argv[1])
