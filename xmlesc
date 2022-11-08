@@ -20,13 +20,13 @@ def escape(path):
         ext = filename_extract.match(path).group(2)
         output = '{0}_escaped{1}'.format(name, ext)
 
-    with open(path, 'r') as xml_file:
+    with open(path, 'r', encoding=ENCODING) as xml_file:
         xml_string = xml_file.read()
 
     text_pattern = re.compile(
         r'(<[a-zA-Z0-9="?. _-]+>)(\s*([^<]+)\s*)(</[a-zA-Z0-9="?. _-]+>)')
 
-    with open(output, 'w') as file:
+    with open(output, 'w', encoding=ENCODING) as file:
         file.write(
             re.sub(text_pattern, '\g<1><![CDATA[\g<2>]]>\g<4>', xml_string))
 
