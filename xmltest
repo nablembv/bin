@@ -19,14 +19,42 @@ def assess(path):
 
 
 def decode(path):
+    if '/' in path:
+        filename_extract = re.compile('(.*/)([a-zA-Z0-9_-]+)(\.xml)$')
+        prev = filename_extract.match(path).group(1)
+        name = filename_extract.match(path).group(2)
+        ext = filename_extract.match(path).group(3)
+        log = '{0}{1}_errslog.txt'.format(prev, name, ext)
+    else:
+        filename_extract = re.compile('([a-zA-Z0-9_-]+)(\.xml)$')
+        name = filename_extract.match(path).group(1)
+        ext = filename_extract.match(path).group(2)
+        log = '{0}_errslog.txt'.format(name, ext)
+
     with open(path, 'r', encoding=ENCODING) as file:
-        strfeed = file.read()
+        xml_string = file.read()
 
     special_pattern = re.compile(
         r'([^<>=a-zA-Z0-9:/;._!,?@`´#\'\"\n\r\t\s\\\[\]\(\)+*\}\{„“”“‚‘’|^¨€$%~&\u00c0-\u017e™°–-]+)')
+    arrow_pattern = re.compile(
+        r'(>[\n\r\t\s]*[=a-zA-Z0-9:/;._!,?@`´#\'\"\\\[\]\(\)+*\}\{„“”“‚‘’|^¨€$%~&\u00c0-\u017e™°–-]+[\n\r\t\s=a-zA-Z0-9:/;._!,?@`´#\'\"\\\[\]\(\)+*\}\{„“”“‚‘’|^¨€$%~&\u00c0-\u017e™°–-]+)( ?< ?)([\n\r\t\s=a-zA-Z0-9:/;._!,?@`´#\'\"\\\[\]\(\)+*\}\{„“”“‚‘’|^¨€$%~&\u00c0-\u017e™°–-]+</)')
+    heart_pattern = re.compile(
+        r'(<3)')
 
-    for i in re.findall(special_pattern, strfeed):
-        print(i)
+    matches = []
+    matches.append('---- SPECIAL PATTERNS ----')
+    for match in re.findall(special_pattern, xml_string):
+        matches.append(match)
+    matches.append('---- ARROW PATTERNS ----')
+    for match in re.findall(arrow_pattern, xml_string):
+        matches.append(match)
+    matches.append('---- HEART PATTERNS ----')
+    for match in re.findall(heart_pattern, xml_string):
+        matches.append(match)
+    with open(log, 'a', encoding=ENCODING) as log_file:
+        for match in matches:
+            log_file.write(''.join(match))
+            log_file.write('\n')
 
 
 if __name__ == "__main__":
