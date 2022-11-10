@@ -1,0 +1,80 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+
+from xml.dom.minidom import parse, parseString, getDOMImplementation
+import sys
+import os
+import re
+
+ENCODING = 'utf-8'
+
+
+def main(path):
+    if '/' in path:
+        filename_extract = re.compile('(.*/)([a-zA-Z0-9_-]+)(\.xml)$')
+        prev = filename_extract.match(path).group(1)
+        name = filename_extract.match(path).group(2)
+        ext = filename_extract.match(path).group(3)
+        output = '{0}{1}_localized{2}'.format(prev, name, ext)
+    else:
+        filename_extract = re.compile('([a-zA-Z0-9_-]+)(\.xml)$')
+        name = filename_extract.match(path).group(1)
+        ext = filename_extract.match(path).group(2)
+        output = '{0}_localized{1}'.format(name, ext)
+    # This script allows you to only keep reviews for a certain locale
+    # Place the script in a folder with 'input_feed.xml', cd into the directory in the terminal and run 'python remove-delta-locale.py'
+    # The end result will be a file called 'output_feed.xml' where all the reviews after the date you specify are removed, and any products that subsequently contain no reviews are deleted too
+
+    # User input first to not force the user to come back if file parsing blocks for long
+    locales_to_keep = input("locales to keep (space-separated): ")
+    locales_to_keep = locales_to_keep.split()
+
+    # Parse file (shit if file big, would need to be done online)
+    with open(path, 'r') as input_feed_standard:
+        parsed_feed_standard = parse(input_feed_standard)
+
+        # Do the work
+        total_reviews = 0
+        removed_reviews = 0
+        total_products = 0
+        removed_products = 0
+
+        # Loop that iterates over all reviews in the parsed xml object
+        for review in parsed_feed_standard.getElementsByTagName("Review"):
+            total_reviews += 1
+            # Get content of DisplayLocale node
+            review_locale = str(review.getElementsByTagName(
+                "DisplayLocale")[0].childNodes[0].nodeValue)
+            if not review_locale in locales_to_keep:
+                # Delete entire review node
+                review.parentNode.removeChild(review)
+                removed_reviews += 1
+
+        # Loop that iterates over all Product nodes, removing them if they contain no review nodes
+        for product in parsed_feed_standard.getElementsByTagName("Product"):
+            total_products += 1
+            if not product.getElementsByTagName("Review"):
+                product.parentNode.removeChild(product)
+                removed_products += 1
+
+        # Show me some STATS!
+        print("total reviews: {0}".format(total_reviews))
+        print("remaining reviews: {0}".format(removed_reviews))
+        print("remaining reviews: {0}".format(total_reviews - removed_reviews))
+        print("total products: {0}".format(total_products))
+        print("removed products: {0}".format(removed_products))
+        print("remaining products: {0}".format(
+            total_products - removed_products))
+
+        # Dump it all in an output file!
+        with open(output, 'w') as output_feed:
+            output_feed.write(
+                str(parsed_feed_standard.toxml(encoding='utf-8')))
+
+
+if __name__ == "__main__":
+    xml_pattern = re.compile(r'.*\.xml$')
+    if sys.argv[1:] and xml_pattern.match(sys.argv[1]) and os.path.exists(sys.argv[1]):
+        main(sys.argv[1])
+    else:
+        print('Couldn\'t parse that file')
