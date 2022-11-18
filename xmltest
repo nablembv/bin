@@ -11,11 +11,23 @@ ENCODING = 'utf-8'
 def assess(path):
     feed = ET.parse(path, ET.XMLParser(encoding=ENCODING))
     root = feed.getroot()
-    ns = "http://www.bazaarvoice.com/xs/PRR/StandardClientFeed/14.7"
-    ET.register_namespace("", ns)
 
-    print("Number of reviews: {0}".format(
-        len(list(root.iter("{%s}Review" % ns)))))
+    ns = input('Namespace (default: StandardClientFeed/14.8): ')
+    if not ns:
+        ns = 'http://www.bazaarvoice.com/xs/PRR/StandardClientFeed/14.8'
+    else:
+        ns = 'http://www.bazaarvoice.com/xs/PRR/{0}'.format(ns)
+    ET.register_namespace('', ns)
+
+    pid = input('Product ID (default: all): ')
+    if pid:
+        reviews = root.findall('./{{{0}}}Product[@id=\'{1}\']/{{{0}}}Reviews/{{{0}}}Review'.format(ns, pid))
+        print('Product {0} has {1} reviews'.format(pid, len(reviews)))
+    else:
+        print('Number of reviews (total): {0}'.format(len(root.findall('.//{{{0}}}Review'.format(ns)))))
+    
+    # print("Number of reviews: {0}".format(
+    #     len(list(root.iter("{%s}Review" % ns)))))
     # for child in root.iter("{%s}Review" % ns):
     #     print(child)
 

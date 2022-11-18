@@ -1,0 +1,40 @@
+#!/usr/bin/python3
+
+import re
+import sys
+import os
+import xml.etree.ElementTree as ET
+
+ENCODING = 'utf-8'
+
+
+def escape(path):
+    if '/' in path:
+        filename_extract = re.compile('(.*/)([a-zA-Z0-9_-]+)(\.xml)$')
+        prev = filename_extract.match(path).group(1)
+        name = filename_extract.match(path).group(2)
+        ext = filename_extract.match(path).group(3)
+        output = '{0}{1}_nospan{2}'.format(prev, name, ext)
+    else:
+        filename_extract = re.compile('([a-zA-Z0-9_-]+)(\.xml)$')
+        name = filename_extract.match(path).group(1)
+        ext = filename_extract.match(path).group(2)
+        output = '{0}_nospan{1}'.format(name, ext)
+
+    with open(path, 'r', encoding=ENCODING) as xml_file:
+        xml_string = xml_file.read()
+
+    span_pattern = re.compile(
+        r'(</?(span|li|ul|a)(\s|>)|<\s|\s>)')
+    xml_string = re.sub(span_pattern, '', xml_string)
+
+    with open(output, 'w', encoding=ENCODING) as xml_file:
+        xml_file.write(xml_string)
+
+
+if __name__ == "__main__":
+    xml_pattern = re.compile(r'.*\.xml$')
+    if sys.argv[1:] and xml_pattern.match(sys.argv[1]) and os.path.exists(sys.argv[1]):
+        escape(sys.argv[1])
+    else:
+        print('Couldn\'t parse that file')

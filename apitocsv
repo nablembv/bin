@@ -1,0 +1,87 @@
+#!/usr/bin/python3
+
+from requests.auth import HTTPBasicAuth
+import requests
+import pandas
+import time
+import sys
+import os
+
+# Credentials file format:
+# - first line is username
+# - second line is password
+CREDENTIALS = '/Users/nabil.lemenuel/workspace/pass.txt'
+
+# IDs file format:
+# - first line is the instance name
+# - then each line is 1 product ID
+def generate(filename, env='stg'):
+    base_url = 'https://catalog-uat.prod.eu-west-1.nexus.bazaarvoice.com'
+    if env == 'prod':
+        base_url = 'https://catalog-bazaar.prod.eu-west-1.nexus.bazaarvoice.com'
+    print('Filename: {0}'.format(filename))
+    print('Environment: {0}'.format(env))
+
+    with open(CREDENTIALS, 'r') as credentials:
+        username = credentials.readline().strip()
+        password = credentials.readline().strip()
+        ldap = HTTPBasicAuth(username, password)
+
+    with open(filename, 'r') as ids_file:
+        instance = ids_file.readline().strip()
+        product_ids = ids_file.read().splitlines()
+    print('Instance: {0}'.format(instance))
+    print('IDs: {0}'.format(','.join(product_ids)))
+
+    df = pandas.DataFrame(columns=[
+        'ExternalId',
+        'Name',
+        'Description',
+        'Brand',
+        'BrandExternalId',
+        'CategoryName',
+        'CategoryExternalId',
+        'ProductPageUrl',
+        'ImageUrl',
+        'EANs'
+    ])
+
+    for product_id in product_ids:
+        product = requests.get(
+            '{0}/2/clients/{1}/products/{2}?includeSources=true'.format(
+                base_url,
+                instance,
+                product_id
+            ),
+            auth=ldap
+        ).json()
+
+        row = pandas.DataFrame.from_dict({
+            'ExternalId': [product['externalID']],
+            'Name': [product['attributes']['name']['default']],
+            'Description': [product['attributes']['description']['default']],
+            'Brand': [product['brandExternalID']],
+            'BrandExternalId': [product['brandExternalID']],
+            'CategoryName': [product['categoryExternalID']],
+            'CategoryExternalId': [product['categoryExternalID']],
+            'ProductPageUrl': [product['attributes']['productPageUrl']['default']],
+            'ImageUrl': [product['attributes']['imageUrl']['default']],
+            'EANs': [','.join(product['attributes']['eans'])],
+        })
+
+        print('{0}: processed'.format(product['externalID']))
+        df = pandas.concat([df, row], ignore_index=True)
+        time.sleep(0.5)
+
+    output = '{0}_catalog_{1}.csv'.format(instance, env)
+    df.to_csv(output, index=False)
+    print('Output: ./{0}'.format(output))
+
+if __name__ == "__main__":
+    if sys.argv[1:] and os.path.exists(sys.argv[1]):
+        if sys.argv[2:] and sys.argv[2] == '--prod':
+            generate(sys.argv[1], 'prod')
+        else:
+            generate(sys.argv[1])
+    else:
+        print('File doesn\'t exist.')
